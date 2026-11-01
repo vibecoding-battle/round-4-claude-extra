@@ -12,14 +12,15 @@ export const BRIDGE_HW = 1.5;
 export const MATCH_TIME = 180;
 export const DOUBLE_AT = 60; // secondes restantes
 export const OVERTIME = 60;
-export const INK_MAX = 10;
-export const INK_START = 5;
-export const INK_PERIOD = 2.8;
+export const ELIXIR_MAX = 10;
+export const ELIXIR_START = 5;
+export const ELIXIR_PERIOD = 2.8;
 
 const SIGHT = 5.5;
 const RETARGET = 0.25;
 const FORMATION = [
   [0, 0], [-0.6, 0.15], [0.6, 0.15], [0, -0.7], [-0.75, -0.55], [0.75, -0.55], [0, 0.75], [-1.1, 0.3], [1.1, 0.3],
+  [-0.7, 0.85], [0.7, 0.85], [-1.3, -0.4], [1.3, -0.4], [-0.4, -1.25], [0.4, -1.25],
 ];
 
 export function mulberry(seed) {
@@ -49,7 +50,7 @@ function dist(ax, ay, bx, by) {
 }
 
 export class Sim {
-  constructor({ decks, seed = 1, inkRate = [1, 1] }) {
+  constructor({ decks, seed = 1, elixirRate = [1, 1] }) {
     this.rng = mulberry(seed);
     this.tick = 0;
     this.time = 0;
@@ -62,17 +63,17 @@ export class Sim {
     this.events = [];
     this.over = null;
     this.overtime = false;
-    this.inkRate = inkRate;
+    this.elixirRate = elixirRate;
     this.players = decks.map((deck, team) => {
       const cards = shuffle(deck.map((id) => CARD_BY_ID[id]), this.rng);
       return {
         team,
-        ink: INK_START,
+        elixir: ELIXIR_START,
         hand: cards.slice(0, 4),
         queue: cards.slice(4),
         last: null,
         crowns: 0,
-        stats: { cardsPlayed: 0, inkSpent: 0, damage: 0, towerDamage: 0, kills: 0 },
+        stats: { cardsPlayed: 0, elixirSpent: 0, damage: 0, towerDamage: 0, kills: 0 },
       };
     });
     this.towers = [[], []];
@@ -91,7 +92,7 @@ export class Sim {
     const e = {
       id: this.nextId++, kind: 'tower', type, team, lane, x, y, r: def.hw, hw: def.hw, hh: def.hh,
       hp: def.hp, maxHp: def.hp, dmg: def.dmg, hit: def.hit, range: def.range, targets: 'any',
-      proj: { kind: 'arrow', speed: 13 }, cd: 0, windup: 0, target: null, retarget: 0, deployT: 0, alive: true,
+      proj: { kind: type === 'king' ? 'cannonball' : 'arrow', speed: 13 }, cd: 0, windup: 0, target: null, retarget: 0, deployT: 0, alive: true,
       active: type === 'princess', atk: 0, flash: 0, stun: 0,
     };
     this.entities.push(e);
@@ -109,7 +110,7 @@ export class Sim {
     return this.overtime ? MATCH_TIME + OVERTIME - this.time : MATCH_TIME - this.time;
   }
 
-  inkMultiplier() {
+  elixirMultiplier() {
     if (this.overtime) return this.timeLeft() <= 30 ? 3 : 2;
     return this.timeLeft() <= DOUBLE_AT ? 2 : 1;
   }
@@ -150,7 +151,7 @@ export class Sim {
     }
     if (real.type === 'building') {
       for (const e of this.entities) {
-        if (e.kind === 'building' && e.alive && dist(x, y, e.x, e.y) < e.r + UNITS[real.unit].r) return false;
+        if (e.kind === 'building' && e.alive && !e.def.untargetable && dist(x, y, e.x, e.y) < e.r + UNITS[real.unit].r) return false;
       }
     }
     return true;
@@ -162,15 +163,15 @@ export class Sim {
     const card = p.hand[slot];
     if (!card) return false;
     const cost = this.costOf(team, card);
-    if (p.ink < cost) return false;
+    if (p.elixir < cost) return false;
     if (!this.canPlace(team, card, x, y)) return false;
     const real = this.resolveCard(team, card);
-    p.ink -= cost;
+    p.elixir -= cost;
     p.hand[slot] = p.queue.shift();
     p.queue.push(card);
     p.last = real;
     p.stats.cardsPlayed++;
-    p.stats.inkSpent += cost;
+    p.stats.elixirSpent += cost;
     this.emit('play', { team, card: real, x, y, copied: !!card.copy, slot });
     if (real.type === 'spell') this.castSpell(team, real, x, y);
     else this.deployCard(team, real, x, y);
@@ -181,7 +182,7 @@ export class Sim {
     const flip = team === 0 ? 1 : -1;
     for (let i = 0; i < card.count; i++) {
       const [ox, oy] = FORMATION[i % FORMATION.length];
-      this.spawn(team, card.unit, x + ox, y + oy * flip, 1);
+      this.spawn(team, card.unit, x + ox, y + oy * flip, UNITS[card.unit].deploy || 1);
     }
   }
 
@@ -192,8 +193,8 @@ export class Sim {
       x: Math.min(W - 0.4, Math.max(0.4, x)), y: Math.min(H - 0.4, Math.max(0.4, y)), r: u.r,
       hp: u.hp, maxHp: u.hp, dmg: u.dmg, hit: u.hit, range: u.range, targets: u.targets, proj: u.proj,
       splash: u.splash || 0, speed: u.speed || 0, mass: u.mass || 1000, air: !!u.air, cd: 0, windup: 0, target: null,
-      retarget: 0, deployT, deployMax: deployT, alive: true, slowMul: 1, rageMul: 1, stun: 0, atk: 0, flash: 0, face: team === 0 ? 1 : -1,
-      moving: false, slide: 0, charged: 0, charging: false, life: u.life || 0, spawnT: u.spawner ? 1 : 0, healT: 0,
+      retarget: 0, deployT, deployMax: deployT, alive: true, rageMul: 1, stun: 0, atk: 0, flash: 0, face: team === 0 ? 1 : -1,
+      moving: false, hidden: false, leap: null, leapCd: 0, hop: 0, rampT: 0, slide: 0, charged: 0, charging: false, life: u.life || 0, spawnT: u.spawner ? 1 : u.producer ? u.producer.every : 0, healT: 0,
     };
     this.entities.push(e);
     this.byId.set(e.id, e);
@@ -203,8 +204,8 @@ export class Sim {
 
   castSpell(team, card, x, y) {
     const king = this.towers[team][2];
-    const delay = Math.max(0.3, dist(king.x, king.y, x, y) / 15);
     const def = card.spell;
+    const delay = Math.max(def.speed >= 40 ? 0.1 : 0.3, dist(king.x, king.y, x, y) / (def.speed || 15));
     const immediate = def.kind === 'zone';
     this.pendingSpells.push({ team, card, x, y, t: immediate ? 0.25 : delay, volleysLeft: def.volleys || 1 });
     this.emit('cast', { team, card, x, y, fromX: king.x, fromY: king.y, delay: immediate ? 0.25 : delay });
@@ -216,7 +217,7 @@ export class Sim {
     if (this.over) return;
     this.tick++;
     this.time += TICK;
-    this.updateInk();
+    this.updateElixir();
     this.updateSpells();
     this.updateZones();
     const list = this.entities;
@@ -230,11 +231,11 @@ export class Sim {
     this.checkClock();
   }
 
-  updateInk() {
-    const mul = this.inkMultiplier();
+  updateElixir() {
+    const mul = this.elixirMultiplier();
     for (const p of this.players) {
-      if (p.ink < INK_MAX) {
-        p.ink = Math.min(INK_MAX, p.ink + (TICK / INK_PERIOD) * mul * this.inkRate[p.team]);
+      if (p.elixir < ELIXIR_MAX) {
+        p.elixir = Math.min(ELIXIR_MAX, p.elixir + (TICK / ELIXIR_PERIOD) * mul * this.elixirRate[p.team]);
       }
     }
   }
@@ -279,6 +280,12 @@ export class Sim {
       const def = s.card.spell;
       if (def.kind === 'blast') {
         this.applyArea(s.team, s.x, s.y, def.radius, def.dmg, def.towerMul, def.knockback);
+        if (def.stun) {
+          for (const v of this.enemiesIn(s.team, s.x, s.y, def.radius, () => true)) {
+            v.stun = Math.max(v.stun, def.stun);
+            v.windup = 0;
+          }
+        }
         this.emit('blast', { x: s.x, y: s.y, radius: def.radius, team: s.team, card: s.card.id });
       } else if (def.kind === 'volley') {
         this.applyArea(s.team, s.x, s.y, def.radius, def.dmg, def.towerMul, 0);
@@ -300,7 +307,16 @@ export class Sim {
           this.emit('smite', { x: v.x, y: v.y });
         }
         if (!victims.length) this.emit('smite', { x: s.x, y: s.y });
+      } else if (def.kind === 'drop') {
+        let py = s.y;
+        if (py > RIVER_TOP && py < RIVER_BOTTOM) py = py < 16 ? RIVER_TOP - 0.1 : RIVER_BOTTOM + 0.1;
+        for (let k = 0; k < def.count; k++) {
+          const [ox, oy] = FORMATION[k];
+          this.spawn(s.team, def.unit, s.x + ox, py + oy, 0.5);
+        }
+        this.emit('drop', { x: s.x, y: py, radius: def.radius, team: s.team });
       } else if (def.kind === 'zone') {
+        if (def.dmg) this.applyArea(s.team, s.x, s.y, def.radius, def.dmg, def.towerMul, 0);
         this.zones.push({
           team: s.team, x: s.x, y: s.y, radius: def.radius, t: def.duration, duration: def.duration, def, card: s.card.id, tickT: 0,
         });
@@ -313,7 +329,6 @@ export class Sim {
   updateZones() {
     for (const e of this.entities) {
       if (e.kind === 'unit' || e.kind === 'building') {
-        e.slowMul = 1;
         e.rageMul = 1;
       }
     }
@@ -321,36 +336,16 @@ export class Sim {
       const z = this.zones[i];
       z.t -= TICK;
       const { def } = z;
-      if (def.effect === 'slow') {
+      if (def.effect === 'freeze') {
         for (const e of this.enemiesIn(z.team, z.x, z.y, z.radius, () => true)) {
-          if (e.kind !== 'tower') e.slowMul = Math.min(e.slowMul, def.slow);
-          const mul = e.kind === 'tower' ? def.towerMul : 1;
-          this.hurt(e, def.dps * TICK * mul, z.team, true);
+          e.stun = Math.max(e.stun, TICK * 2);
+          e.windup = 0;
         }
       } else if (def.effect === 'rage') {
         for (const e of this.entities) {
           if (e.alive && e.team === z.team && e.kind === 'unit' && dist(e.x, e.y, z.x, z.y) <= z.radius + e.r) {
             e.rageMul = Math.max(e.rageMul, def.rage);
           }
-        }
-      } else if (def.effect === 'summon') {
-        z.tickT -= TICK;
-        if (z.tickT <= 0 && z.t > 0) {
-          z.tickT = def.every;
-          // Tirage dans le carré englobant : pas de trigonométrie pour rester strictement reproductible.
-          let px = z.x;
-          let py = z.y;
-          for (let k = 0; k < 6; k++) {
-            const qx = z.x + (this.rng() * 2 - 1) * z.radius;
-            const qy = z.y + (this.rng() * 2 - 1) * z.radius;
-            if (dist(qx, qy, z.x, z.y) <= z.radius) {
-              px = qx;
-              py = qy;
-              break;
-            }
-          }
-          if (py > RIVER_TOP && py < RIVER_BOTTOM) py = py < 16 ? RIVER_TOP - 0.1 : RIVER_BOTTOM + 0.1;
-          this.spawn(z.team, def.unit, px, py, 0.35);
         }
       }
       if (z.t <= 0) this.zones.splice(i, 1);
@@ -360,7 +355,7 @@ export class Sim {
   enemiesIn(team, x, y, radius, filter) {
     const out = [];
     for (const e of this.entities) {
-      if (!e.alive || e.team === team) continue;
+      if (!e.alive || e.team === team || e.def?.untargetable) continue;
       const d = this.distTo(x, y, e);
       if (d <= radius && filter(e)) out.push(e);
     }
@@ -419,13 +414,14 @@ export class Sim {
     const u = e.def;
     this.emit('death', { x: e.x, y: e.y, team: e.team, unit: e.unit, air: e.air, r: e.r, building: e.kind === 'building' });
     if (u.deathDamage) {
-      this.applyArea(e.team, e.x, e.y, u.deathDamage.radius, u.deathDamage.dmg, 0.5, 0, (t) => !e.air || !t.air);
+      this.applyArea(e.team, e.x, e.y, u.deathDamage.radius, u.deathDamage.dmg, u.deathDamage.towerMul ?? 0.5, 0, (t) => !e.air || !t.air);
       this.emit('blast', { x: e.x, y: e.y, radius: u.deathDamage.radius, team: e.team, card: 'death' });
     }
     if (u.deathSpawn) {
       for (let i = 0; i < u.deathSpawn.count; i++) {
         const [ox, oy] = FORMATION[(i + 1) % FORMATION.length];
-        this.spawn(e.team, u.deathSpawn.unit, e.x + ox, e.y + oy, 0.2);
+        const k = u.deathSpawn.count > 1 ? 1 : 0;
+        this.spawn(e.team, u.deathSpawn.unit, e.x + ox * k, e.y + oy * k, 0.2);
       }
     }
   }
@@ -460,6 +456,7 @@ export class Sim {
   canTarget(e, t) {
     if (!t.alive || t.team === e.team) return false;
     if (t.kind !== 'tower' && t.deployT > 0.3) return false;
+    if (t.def?.untargetable || t.hidden) return false;
     if (e.targets === 'ground') return !t.air;
     if (e.targets === 'buildings') return t.kind === 'tower' || t.kind === 'building';
     return e.targets !== 'none';
@@ -499,7 +496,7 @@ export class Sim {
       if (!this.canTarget(e, t)) continue;
       const d = this.edgeDist(e, t);
       const within = e.kind === 'unit' ? d <= sight : d <= e.range;
-      if (!within) continue;
+      if (!within || (e.def?.minRange && d < e.def.minRange)) continue;
       if (d < bestD - 1e-6) {
         bestD = d;
         best = t;
@@ -517,6 +514,11 @@ export class Sim {
     }
     if (e.deployT > 0) {
       e.deployT -= TICK;
+      if (e.deployT <= 0 && e.def.spawnDamage) {
+        const { radius, dmg } = e.def.spawnDamage;
+        this.applyArea(e.team, e.x, e.y, radius, dmg, 1, 0.8, (t) => !t.air);
+        this.emit('blast', { x: e.x, y: e.y, radius, team: e.team, card: 'landing' });
+      }
       return;
     }
     if (e.kind === 'building') {
@@ -528,8 +530,11 @@ export class Sim {
         this.kill(e);
         return;
       }
-      if (e.def.spawner) this.updateSpawner(e);
+      if (e.def.spawner && e.stun <= 0) this.updateSpawner(e);
+      if (e.def.producer && e.stun <= 0) this.updateProducer(e);
       if (e.targets !== 'none') this.updateShooter(e);
+      else if (e.stun > 0) e.stun -= TICK;
+      if (e.def.hides) e.hidden = !e.target;
       return;
     }
     this.updateUnit(e);
@@ -547,23 +552,41 @@ export class Sim {
     e.atk = 1;
   }
 
+  updateProducer(e) {
+    e.spawnT -= TICK;
+    if (e.spawnT > 0) return;
+    e.spawnT = e.def.producer.every;
+    const p = this.players[e.team];
+    p.elixir = Math.min(ELIXIR_MAX, p.elixir + e.def.producer.amount);
+    e.atk = 1;
+    this.emit('elixir', { x: e.x, y: e.y, team: e.team });
+  }
+
   updateShooter(e) {
     if (e.stun > 0) {
       e.stun -= TICK;
+      e.rampT = 0;
       return;
     }
     e.cd = Math.max(0, e.cd - TICK);
     if (e.target) {
       const t = this.byId.get(e.target);
-      if (!t || !this.canTarget(e, t) || this.edgeDist(e, t) > e.range) e.target = null;
+      if (!t || !this.canTarget(e, t) || this.edgeDist(e, t) > e.range || (e.def?.minRange && this.edgeDist(e, t) < e.def.minRange)) {
+        e.target = null;
+        e.rampT = 0;
+      }
     }
     if (!e.target) {
       const t = this.acquire(e);
       if (t) e.target = t.id;
     }
     const t = e.target && this.byId.get(e.target);
-    if (t) this.tryAttack(e, t);
-    else e.windup = 0;
+    if (t) {
+      e.rampT += TICK;
+      this.tryAttack(e, t);
+    } else {
+      e.windup = 0;
+    }
   }
 
   updateUnit(e) {
@@ -572,8 +595,13 @@ export class Sim {
       e.moving = false;
       return;
     }
+    if (e.leap) {
+      this.updateLeap(e);
+      return;
+    }
     e.cd = Math.max(0, e.cd - TICK * e.rageMul);
-    if (e.def.heal) this.updateHealer(e);
+    e.leapCd = Math.max(0, e.leapCd - TICK);
+    if (e.def.spawner) this.updateSpawner(e);
 
     // Choix de la cible : verrouillée tant qu'elle reste à portée.
     e.retarget -= TICK;
@@ -591,13 +619,10 @@ export class Sim {
       return;
     }
 
+    if (e.def.leap && e.leapCd <= 0 && this.startLeap(e, target)) return;
     const reach = this.edgeDist(e, target) <= e.range;
     if (reach) {
       e.moving = false;
-      if (e.def.kamikaze) {
-        this.explodeKamikaze(e);
-        return;
-      }
       this.tryAttack(e, target);
     } else {
       e.windup = 0;
@@ -605,28 +630,35 @@ export class Sim {
     }
   }
 
-  updateHealer(e) {
-    e.healT -= TICK;
-    if (e.healT > 0) return;
-    e.healT = 0.5;
-    const { radius, hps } = e.def.heal;
-    let healed = false;
-    for (const a of this.entities) {
-      if (a.alive && a.team === e.team && a.kind === 'unit' && a !== e && a.hp < a.maxHp && dist(a.x, a.y, e.x, e.y) <= radius) {
-        a.hp = Math.min(a.maxHp, a.hp + hps * 0.5);
-        healed = true;
-        this.emit('heal', { x: a.x, y: a.y });
-      }
-    }
-    if (healed) e.atk = Math.max(e.atk, 0.4);
+  // Bond du méga chevalier : jamais par-dessus la rivière, et toujours vers une cible au sol.
+  startLeap(e, target) {
+    const { min, max, dur } = e.def.leap;
+    if (target.kind !== 'unit' || target.air) return false;
+    if ((e.y - 16) * (target.y - 16) < 0) return false;
+    const d = this.edgeDist(e, target);
+    if (d < min || d > max) return false;
+    e.leap = { t: 0, dur, fx: e.x, fy: e.y, tx: target.x, ty: target.y };
+    e.moving = false;
+    e.windup = 0;
+    e.face = target.x >= e.x ? 1 : -1;
+    this.emit('chargeStart', { id: e.id, x: e.x, y: e.y });
+    return true;
   }
 
-  explodeKamikaze(e) {
-    const k = e.def.kamikaze;
-    this.applyArea(e.team, e.x, e.y, k.radius, k.dmg, k.towerMul, 0.8, (t) => !t.air);
-    this.emit('blast', { x: e.x, y: e.y, radius: k.radius, team: e.team, card: 'powder' });
-    e.alive = false;
-    e.hp = 0;
+  updateLeap(e) {
+    const l = e.leap;
+    const def = e.def.leap;
+    l.t += TICK;
+    const k = Math.min(1, l.t / l.dur);
+    e.x = l.fx + (l.tx - l.fx) * k;
+    e.y = l.fy + (l.ty - l.fy) * k;
+    e.hop = Math.sin(k * Math.PI);
+    if (k < 1) return;
+    e.leap = null;
+    e.hop = 0;
+    e.leapCd = def.cooldown;
+    this.applyArea(e.team, e.x, e.y, def.radius, e.dmg * def.dmgMul, 1, 0.6, (t) => !t.air);
+    this.emit('blast', { x: e.x, y: e.y, radius: def.radius, team: e.team, card: 'landing' });
   }
 
   tryAttack(e, target) {
@@ -649,6 +681,7 @@ export class Sim {
 
   strike(e, target) {
     let dmg = e.dmg;
+    if (e.def?.ramp) dmg = e.def.ramp[Math.min(e.def.ramp.length - 1, Math.floor(e.rampT / e.def.rampEvery))];
     if (e.charging) {
       dmg *= e.def.charge.dmgMul;
       e.charging = false;
@@ -663,12 +696,15 @@ export class Sim {
         splash: e.splash, kind: e.proj.kind, speed: e.proj.speed, arc: !!e.proj.arc, traveled: 0, targets: e.targets,
       });
       this.emit('shoot', { kind: e.proj.kind, x: e.x, y: e.y, team: e.team, tower: e.kind === 'tower' });
+    } else if (e.def?.spin) {
+      this.applyArea(e.team, e.x, e.y, e.def.spin, dmg, 1, 0, (t) => !t.air);
+      this.emit('sweep', { x: e.x, y: e.y, radius: e.def.spin });
     } else if (e.splash) {
       this.applyArea(e.team, target.x, target.y, e.splash, dmg, 1, 0, (t) => !t.air);
-      this.emit('blast', { x: target.x, y: target.y, radius: e.splash, team: e.team, card: 'drop' });
+      this.emit('sweep', { x: target.x, y: target.y, radius: e.splash });
     } else {
       this.hurt(target, dmg, e.team);
-      this.emit('melee', { x: target.x, y: target.y, unit: e.unit, heavy: dmg >= 200 });
+      this.emit('melee', { x: target.x, y: target.y, unit: e.unit, heavy: dmg >= 400, beam: !!e.def?.ramp, zap: !!e.def?.hides, fx: e.x, fy: e.y });
     }
   }
 
@@ -702,7 +738,7 @@ export class Sim {
     dx /= len;
     dy /= len;
     if (!e.air) [dx, dy] = this.steer(e, dx, dy, target);
-    let speed = e.speed * e.slowMul * e.rageMul;
+    let speed = e.speed * e.rageMul;
     const charge = e.def.charge;
     if (charge) {
       e.charged += speed * TICK;
@@ -721,7 +757,7 @@ export class Sim {
   // Contourne les tours et bâtiments qui barrent la route, en glissant vers l'angle le plus proche.
   steer(e, dx, dy, target) {
     for (const o of this.entities) {
-      if (!o.alive || o === e || o.kind === 'unit' || o === target) continue;
+      if (!o.alive || o === e || o.kind === 'unit' || o === target || o.def?.untargetable) continue;
       let nx;
       let ny;
       let gap;
@@ -795,7 +831,7 @@ export class Sim {
     for (const e of units) {
       if (!e.air) {
         for (const o of list) {
-          if (!o.alive || o.kind === 'unit') continue;
+          if (!o.alive || o.kind === 'unit' || o.def?.untargetable) continue;
           if (o.kind === 'tower') this.pushOutRect(e, o);
           else this.pushOutCircle(e, o);
         }

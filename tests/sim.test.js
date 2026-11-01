@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { AI } from '../src/sim/ai.js';
 import { CARDS, CARD_BY_ID, DEFAULT_DECK, UNITS } from '../src/sim/cards.js';
-import { H, INK_MAX, MATCH_TIME, OVERTIME, RIVER_BOTTOM, RIVER_TOP, Sim, TICK, W } from '../src/sim/sim.js';
+import { H, ELIXIR_MAX, MATCH_TIME, OVERTIME, RIVER_BOTTOM, RIVER_TOP, Sim, TICK, W } from '../src/sim/sim.js';
 
 const newSim = (seed = 3, decks = [DEFAULT_DECK, DEFAULT_DECK]) => new Sim({ decks, seed });
 
@@ -16,10 +16,10 @@ function run(sim, seconds, each) {
 }
 
 // Force une carte en main pour tester un comportement précis, sans dépendre du mélange.
-function giveCard(sim, team, id, ink = INK_MAX) {
+function giveCard(sim, team, id, ink = ELIXIR_MAX) {
   const p = sim.players[team];
   p.hand[0] = CARD_BY_ID[id];
-  p.ink = ink;
+  p.elixir = ink;
 }
 
 function units(sim, team) {
@@ -34,37 +34,37 @@ test('chaque carte référence un profil valide et chaque deck par défaut exist
   for (const id of DEFAULT_DECK) assert.ok(CARD_BY_ID[id]);
 });
 
-test("l'encre monte jusqu'au maximum et double dans la dernière minute", () => {
+test("l'élixir monte jusqu'au maximum et double dans la dernière minute", () => {
   const sim = newSim();
-  const start = sim.players[0].ink;
+  const start = sim.players[0].elixir;
   run(sim, 2.8);
-  assert.ok(Math.abs(sim.players[0].ink - start - 1) < 0.05);
+  assert.ok(Math.abs(sim.players[0].elixir - start - 1) < 0.05);
   run(sim, 60);
-  assert.equal(sim.players[0].ink, INK_MAX);
+  assert.equal(sim.players[0].elixir, ELIXIR_MAX);
   sim.time = MATCH_TIME - 30;
-  sim.players[0].ink = 0;
+  sim.players[0].elixir = 0;
   run(sim, 2.8);
-  assert.ok(Math.abs(sim.players[0].ink - 2) < 0.05);
+  assert.ok(Math.abs(sim.players[0].elixir - 2) < 0.05);
 });
 
 test('une pose hors de sa moitié ou sans encre est refusée, et la main tourne', () => {
   const sim = newSim();
-  giveCard(sim, 0, 'lapin', 10);
+  giveCard(sim, 0, 'knight', 10);
   assert.equal(sim.play(0, 0, 9, 10), false, 'moitié adverse');
   assert.equal(sim.play(0, 0, 3.5, 25.5), false, 'sur une tour');
-  sim.players[0].ink = 1;
-  assert.equal(sim.play(0, 0, 9, 20), false, 'pas assez d’encre');
-  sim.players[0].ink = 10;
+  sim.players[0].elixir = 1;
+  assert.equal(sim.play(0, 0, 9, 20), false, 'pas assez d’élixir');
+  sim.players[0].elixir = 10;
   const next = sim.players[0].queue[0];
   assert.equal(sim.play(0, 0, 9, 20), true);
   assert.equal(sim.players[0].hand[0], next);
-  assert.equal(sim.players[0].queue.at(-1).id, 'lapin');
-  assert.equal(sim.players[0].ink, 7);
+  assert.equal(sim.players[0].queue.at(-1).id, 'knight');
+  assert.equal(sim.players[0].elixir, 7);
 });
 
 test('la poche de pose s’ouvre après la chute de la tour adverse', () => {
   const sim = newSim();
-  const card = CARD_BY_ID.lapin;
+  const card = CARD_BY_ID.knight;
   assert.equal(sim.canPlace(0, card, 3, 12), false);
   sim.hurt(sim.towers[1][0], 99999, 0);
   assert.equal(sim.canPlace(0, card, 3, 12), true);
@@ -75,22 +75,22 @@ test('la poche de pose s’ouvre après la chute de la tour adverse', () => {
 
 test('une troupe traverse par le pont, ne nage pas, et atteint la tour', () => {
   const sim = newSim();
-  giveCard(sim, 0, 'lapin');
+  giveCard(sim, 0, 'knight');
   sim.play(0, 0, 9, 20);
-  const rabbit = units(sim, 0)[0];
+  const knight = units(sim, 0)[0];
   let crossedOutsideBridge = false;
   run(sim, 40, () => {
-    if (rabbit.alive && rabbit.y > RIVER_TOP && rabbit.y < RIVER_BOTTOM) {
-      if (Math.abs(rabbit.x - 3.5) > 1.6 && Math.abs(rabbit.x - 14.5) > 1.6) crossedOutsideBridge = true;
+    if (knight.alive && knight.y > RIVER_TOP && knight.y < RIVER_BOTTOM) {
+      if (Math.abs(knight.x - 3.5) > 1.6 && Math.abs(knight.x - 14.5) > 1.6) crossedOutsideBridge = true;
     }
   });
   assert.equal(crossedOutsideBridge, false);
   assert.ok(sim.towers[1][0].hp < sim.towers[1][0].maxHp || sim.towers[1][1].hp < sim.towers[1][1].maxHp, 'une tour a été touchée');
 });
 
-test('le grylle saute la rivière hors des ponts', () => {
+test('le chevaucheur saute la rivière hors des ponts', () => {
   const sim = newSim();
-  giveCard(sim, 0, 'grylle');
+  giveCard(sim, 0, 'hog-rider');
   sim.play(0, 0, 9, 18);
   const g = units(sim, 0)[0];
   let sawRiver = false;
@@ -102,7 +102,7 @@ test('le grylle saute la rivière hors des ponts', () => {
 
 test('une unité au sol contourne une tour alliée placée sur sa route', () => {
   const sim = newSim();
-  giveCard(sim, 0, 'lapin');
+  giveCard(sim, 0, 'knight');
   // Juste derrière la tour gauche : il doit la contourner pour rejoindre le pont.
   sim.play(0, 0, 3.5, 28);
   const r = units(sim, 0)[0];
@@ -112,54 +112,119 @@ test('une unité au sol contourne une tour alliée placée sur sa route', () => 
 
 test('les lames ne touchent pas les volants, les archers si', () => {
   const sim = newSim();
-  const owl = sim.spawn(1, 'chouette', 9, 22, 0);
-  const rabbit = sim.spawn(0, 'lapin', 9, 22.5, 0);
-  const monk = sim.spawn(0, 'moine', 9, 26, 0);
-  assert.equal(sim.canTarget(rabbit, owl), false);
-  assert.equal(sim.canTarget(monk, owl), true);
+  const minion = sim.spawn(1, 'minion', 9, 22, 0);
+  const knight = sim.spawn(0, 'knight', 9, 22.5, 0);
+  const archer = sim.spawn(0, 'archer', 9, 26, 0);
+  assert.equal(sim.canTarget(knight, minion), false);
+  assert.equal(sim.canTarget(archer, minion), true);
 });
 
 test('les chercheurs de bâtiments ignorent les troupes', () => {
   const sim = newSim();
-  const snail = sim.spawn(0, 'escargot', 3.5, 14, 0);
-  sim.spawn(1, 'lapin', 3.5, 13, 0);
+  const giant = sim.spawn(0, 'giant', 3.5, 14, 0);
+  sim.spawn(1, 'knight', 3.5, 13, 0);
   run(sim, 2);
-  const t = sim.byId.get(snail.target);
+  const t = sim.byId.get(giant.target);
   assert.equal(t.kind, 'tower');
 });
 
-test('le feu blesse, repousse, et frappe la tour à taux réduit', () => {
+test('la boule de feu blesse, repousse, et frappe la tour à taux réduit', () => {
   const sim = newSim();
-  const mouse = sim.spawn(1, 'souris', 3.5, 8.5, 5); // immobile le temps du déploiement
+  const skel = sim.spawn(1, 'skeleton', 3.5, 8.5, 5); // immobile le temps du déploiement
   const tower = sim.towers[1][0];
-  giveCard(sim, 0, 'feu');
+  giveCard(sim, 0, 'fireball');
   sim.play(0, 0, 3.5, 8);
   run(sim, 3);
-  assert.equal(mouse.alive, false);
-  assert.ok(Math.abs(tower.maxHp - tower.hp - 340 * 0.35) < 40, 'tour touchée à 35 %');
+  assert.equal(skel.alive, false);
+  assert.ok(Math.abs(tower.maxHp - tower.hp - CARD_BY_ID.fireball.spell.dmg * 0.3) < 40, 'tour touchée à 30 %');
 });
 
-test('le copiste rejoue la dernière carte pour une goutte de plus', () => {
+test('le miroir rejoue la dernière carte pour une goutte de plus', () => {
   const sim = newSim();
   const p = sim.players[0];
-  giveCard(sim, 0, 'copiste');
+  giveCard(sim, 0, 'mirror');
   assert.equal(sim.costOf(0, p.hand[0]), Infinity, 'rien à copier au départ');
   assert.equal(sim.play(0, 0, 9, 20), false);
-  p.hand[1] = CARD_BY_ID.lapin;
-  p.ink = 10;
+  p.hand[1] = CARD_BY_ID.knight;
+  p.elixir = 10;
   sim.play(0, 1, 9, 20);
   assert.equal(sim.costOf(0, p.hand[0]), 4);
   sim.play(0, 0, 5, 20);
-  assert.equal(units(sim, 0).filter((u) => u.unit === 'lapin').length, 2);
-  assert.equal(p.ink, 3);
+  assert.equal(units(sim, 0).filter((u) => u.unit === 'knight').length, 2);
+  assert.equal(p.elixir, 3);
 });
 
-test('la mort de la gargouille libère ses gargouillons', () => {
+test('la mort de le golem libère ses golemites', () => {
   const sim = newSim();
-  const g = sim.spawn(1, 'gargouille', 9, 10, 0);
+  const g = sim.spawn(1, 'golem', 9, 10, 0);
   sim.hurt(g, 99999, 0);
   run(sim, 0.1);
-  assert.equal(units(sim, 1).filter((u) => u.unit === 'gargouillon').length, 3);
+  assert.equal(units(sim, 1).filter((u) => u.unit === 'golemite').length, 2);
+});
+
+test('le méga chevalier écrase à l’atterrissage puis bondit sur une cible à portée', () => {
+  const sim = newSim();
+  const victim = sim.spawn(1, 'goblin', 9, 22, 0);
+  sim.spawn(0, 'mega-knight', 9, 22.5, 0.1);
+  run(sim, 0.3);
+  assert.equal(victim.alive, false, 'écrasé à la pose');
+  const mk = sim.spawn(0, 'mega-knight', 3, 28, 0);
+  const far = sim.spawn(1, 'knight', 3, 23, 0);
+  let leaped = false;
+  run(sim, 1.5, () => { if (mk.leap) leaped = true; });
+  assert.ok(leaped);
+  assert.ok(far.hp < far.maxHp);
+});
+
+test('la tour de l’enfer chauffe sur une même cible', () => {
+  const sim = newSim();
+  const inferno = sim.spawn(0, 'inferno-tower', 9, 24, 0);
+  const golem = sim.spawn(1, 'golem', 9, 21, 0);
+  golem.speed = 0;
+  run(sim, 1);
+  const early = golem.maxHp - golem.hp;
+  run(sim, 3.3);
+  const later = golem.maxHp - golem.hp - early;
+  assert.ok(inferno.rampT > 4);
+  assert.ok(later > early * 5, `${early} puis ${later}`);
+});
+
+test('le gel fige tours et troupes, et la Tesla se cache sans cible', () => {
+  const sim = newSim();
+  const tesla = sim.spawn(1, 'tesla', 9, 10, 0);
+  run(sim, 0.2);
+  assert.equal(tesla.hidden, true);
+  const knight = sim.spawn(1, 'knight', 3.5, 9.5, 0);
+  giveCard(sim, 0, 'freeze');
+  sim.play(0, 0, 3.5, 9);
+  run(sim, 1);
+  const y = knight.y;
+  run(sim, 1);
+  assert.equal(knight.y, y);
+  assert.ok(sim.towers[1][0].stun > 0);
+});
+
+test('l’extracteur produit de l’élixir et le fût largue trois gobelins chez l’ennemi', () => {
+  const sim = newSim();
+  sim.spawn(0, 'elixir-collector', 9, 28, 0);
+  sim.players[0].elixir = 0;
+  run(sim, 9.2);
+  assert.ok(sim.players[0].elixir > 4.2);
+  giveCard(sim, 0, 'goblin-barrel');
+  assert.equal(sim.play(0, 0, 9, 8), true);
+  run(sim, 3.2);
+  assert.equal(units(sim, 0).filter((u) => u.unit === 'goblin').length, 3);
+});
+
+test('le squelette géant laisse une bombe qui explose après 3 s', () => {
+  const sim = newSim();
+  const gs = sim.spawn(0, 'giant-skeleton', 9, 22, 0);
+  const foe = sim.spawn(1, 'knight', 9, 21, 20);
+  sim.hurt(gs, 99999, 1);
+  run(sim, 1);
+  assert.equal(foe.hp, foe.maxHp);
+  run(sim, 2.6);
+  assert.ok(foe.hp < foe.maxHp);
 });
 
 test('la tour du roi tombée donne trois couronnes et termine la partie', () => {

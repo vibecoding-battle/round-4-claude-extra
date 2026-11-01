@@ -1,73 +1,76 @@
-// Les folios de la campagne : chaque adversaire a son deck, son niveau de jeu et ses répliques.
+// Les arènes de la campagne : chaque dresseur a son deck, son niveau de jeu et ses répliques.
 
-export const STARTER_CARDS = ['lapin', 'moines', 'souris', 'goupil', 'squelettes', 'diablotins', 'chouette', 'cochon', 'baliste', 'feu', 'fleches', 'encre'];
+export const STARTER_CARDS = ['knight', 'archers', 'goblins', 'skeletons', 'bomber', 'spear-goblins', 'minions', 'giant', 'cannon', 'fireball', 'arrows', 'zap'];
+
+const lines = (start, hit, score, lose, win) => ({ start: [start], hit: [hit], score: [score], lose: [lose], win: [win] });
 
 export const CHAPTERS = [
   {
-    id: 'begnin', numeral: 'I', name: 'Frère Bégnin', title: 'Copiste distrait', figure: 'moine', level: 'novice', inkRate: 1,
-    deck: ['moines', 'lapin', 'souris', 'squelettes', 'goupil', 'baliste', 'fleches', 'chouette'],
-    unlocks: ['licorne', 'cantique'],
-    taunts: { start: ['Pardon, c’est ici la bibliothèque ?'], hit: ['Oh ! Mon beau chapiteau !'], score: ['Tiens ? J’ai réussi ?'], lose: ['Je recopierai cent fois : je ne gagne pas.'], win: ['Amen, et bonne lecture.'] },
+    id: 'earl', numeral: '1', name: 'Trainer Earl', title: 'Camp d’entraînement', level: 'novice', elixirRate: 1,
+    deck: ['knight', 'archers', 'goblins', 'skeletons', 'bomber', 'cannon', 'arrows', 'minions'],
+    unlocks: ['barbarians', 'musketeer', 'tombstone', 'mortar'],
+    taunts: lines('Bien le bonjour !', 'Pas mal, pas mal !', 'Hé hé !', 'Bien joué !', 'Merci d’être venu !'),
   },
   {
-    id: 'goupille', numeral: 'II', name: 'Dame Goupille', title: 'Voleuse de plumes', figure: 'goupil', level: 'novice', inkRate: 1,
-    deck: ['goupil', 'souris', 'cochon', 'diablotins', 'lapin', 'moines', 'encre', 'feu'],
-    unlocks: ['ours', 'beffroi'],
-    taunts: { start: ['Jolies tours. Je les prends.'], hit: ['Ce n’était qu’un emprunt !'], score: ['Ceci aussi, je le garde.'], lose: ['Je reviendrai pour l’encrier.'], win: ['Merci pour la plume.'] },
+    id: 'gob', numeral: '2', name: 'Trainer Gob', title: 'Stade des gobelins', level: 'novice', elixirRate: 1,
+    deck: ['goblins', 'spear-goblins', 'goblin-hut', 'knight', 'minions', 'bomber', 'arrows', 'fireball'],
+    unlocks: ['goblin-hut', 'goblin-barrel', 'minion-horde', 'mini-pekka'],
+    taunts: lines('Hi hi hi ! Tes tours sont à moi.', 'Aïe !', 'Hi hi !', 'Pas juste !', 'Encore, encore !'),
   },
   {
-    id: 'sansonnet', numeral: 'III', name: 'Sansonnet le Fol', title: 'Bouffon du chapitre', figure: 'grylle', level: 'moyen', inkRate: 1,
-    deck: ['grylle', 'souris', 'squelettes', 'diablotins', 'cochon', 'terrier', 'fleches', 'cantique'],
-    unlocks: ['grylle', 'abbesse'],
-    taunts: { start: ['Qui veut voir une tête sur deux pattes ?'], hit: ['Aïe ! Mon meilleur grelot !'], score: ['Ha ! Elle était bonne, celle-là !'], lose: ['Fin du spectacle. Lancez des choux.'], win: ['Rideau ! On rit, on rit !'] },
+    id: 'bones', numeral: '3', name: 'Trainer Ossa', title: 'Fosse des os', level: 'moyen', elixirRate: 1,
+    deck: ['skeleton-army', 'skeletons', 'tombstone', 'giant', 'witch', 'minions', 'zap', 'arrows'],
+    unlocks: ['witch', 'skeleton-army', 'giant-skeleton', 'bomb-tower'],
+    taunts: lines('Mes os te saluent.', 'Crac !', 'Un de plus au cimetière.', 'Je reviendrai en morceaux.', 'Repose en paix.'),
   },
   {
-    id: 'severe', numeral: 'IV', name: 'Sœur Sévère', title: 'Abbesse de la correction', figure: 'abbesse', level: 'moyen', inkRate: 1,
-    deck: ['abbesse', 'lapin', 'moines', 'ours', 'beffroi', 'chouette', 'fleches', 'encre'],
-    unlocks: ['wyverne', 'terrier'],
-    taunts: { start: ['Tenez-vous droit. Je note.'], hit: ['Ceci figurera au registre.'], score: ['Une faute de plus, mon enfant.'], lose: ['Cette page sera pardonnée. Pas vous.'], win: ['À genoux. Recopiez.'] },
+    id: 'barb', numeral: '4', name: 'Trainer Brutus', title: 'Colisée des barbares', level: 'moyen', elixirRate: 1,
+    deck: ['barbarians', 'barbarian-hut', 'valkyrie', 'hog-rider', 'archers', 'cannon', 'fireball', 'rage'],
+    unlocks: ['barbarian-hut', 'valkyrie', 'hog-rider', 'rage'],
+    taunts: lines('Par ma moustache !', 'Grrr !', 'Pour le clan !', 'Honorable combat.', 'Moustache victorieuse !'),
   },
   {
-    id: 'renart', numeral: 'V', name: 'Maître Renart', title: 'Plaideur sans scrupule', figure: 'chat', level: 'fort', inkRate: 1,
-    deck: ['chat', 'goupil', 'licorne', 'lapin', 'chouette', 'baliste', 'feu', 'encre'],
-    unlocks: ['chat', 'escargot'],
-    taunts: { start: ['Je plaide coupable : de votre défaite.'], hit: ['Objection !'], score: ['La cour appréciera.'], lose: ['Je ferai appel.'], win: ['Affaire classée.'] },
+    id: 'spell', numeral: '5', name: 'Trainer Merlin', title: 'Vallée des sorts', level: 'fort', elixirRate: 1,
+    deck: ['wizard', 'baby-dragon', 'knight', 'tesla', 'freeze', 'fireball', 'zap', 'mirror'],
+    unlocks: ['wizard', 'freeze', 'mirror', 'baby-dragon'],
+    taunts: lines('Abracadabra.', 'Mauvais sort !', 'Et hop, disparue.', 'Ma baguette a fourché.', 'Quelle magie !'),
   },
   {
-    id: 'prieur', numeral: 'VI', name: 'Le Prieur Limace', title: 'Maître des sièges lents', figure: 'escargot', level: 'fort', inkRate: 1,
-    deck: ['escargot', 'moines', 'wyverne', 'abbesse', 'souris', 'beffroi', 'fleches', 'cantique'],
-    unlocks: ['cigogne', 'macabre'],
-    taunts: { start: ['Rien ne presse. Vous êtes déjà perdu.'], hit: ['Ma coquille en a vu d’autres.'], score: ['Lentement. Sûrement.'], lose: ['Trop vite. Vous allez trop vite.'], win: ['Je vous avais dit : rien ne presse.'] },
+    id: 'build', numeral: '6', name: 'Trainer Tess', title: 'Atelier du constructeur', level: 'fort', elixirRate: 1,
+    deck: ['x-bow', 'tesla', 'mortar', 'knight', 'archers', 'elixir-collector', 'rocket', 'skeletons'],
+    unlocks: ['tesla', 'x-bow', 'elixir-collector', 'rocket'],
+    taunts: lines('Tout est calculé.', 'À réparer.', 'Selon le plan.', 'Erreur de conception.', 'Livraison terminée.'),
   },
   {
-    id: 'eveque', numeral: 'VII', name: 'L’Évêque Courroucé', title: 'Foudre du diocèse', figure: 'ours', level: 'expert', inkRate: 1,
-    deck: ['ours', 'cigogne', 'grylle', 'abbesse', 'wyverne', 'squelettes', 'courroux', 'fleches'],
-    unlocks: ['courroux', 'copiste'],
-    taunts: { start: ['Vous êtes excommunié de cette page.'], hit: ['Blasphème !'], score: ['Le ciel a tranché.'], lose: ['Ce n’est qu’une épreuve de plus.'], win: ['Requiescat.'] },
+    id: 'royal', numeral: '7', name: 'Trainer Roy', title: 'Arène royale', level: 'expert', elixirRate: 1,
+    deck: ['prince', 'pekka', 'balloon', 'lightning', 'musketeer', 'inferno-tower', 'goblins', 'arrows'],
+    unlocks: ['prince', 'balloon', 'lightning', 'inferno-tower', 'pekka'],
+    taunts: lines('À genoux.', 'Insolent !', 'Vive le roi !', 'Bien joué, manant.', 'Échec et mat.'),
   },
   {
-    id: 'mort', numeral: 'VIII', name: 'La Camarde', title: 'Maîtresse de la danse', figure: 'squelette', level: 'expert', inkRate: 1.15,
-    deck: ['gargouille', 'macabre', 'squelettes', 'wyverne', 'chat', 'baliste', 'feu', 'courroux'],
-    unlocks: ['gargouille'],
-    note: 'Sa plume ne sèche jamais : son encre remonte 15 % plus vite.',
-    taunts: { start: ['Tout le monde finit par danser.'], hit: ['Cela chatouille.'], score: ['Un pas de plus vers moi.'], lose: ['Je repasserai. Je repasse toujours.'], win: ['Prenez ma main.'] },
+    id: 'legend', numeral: '8', name: 'Trainer Mega', title: 'Arène légendaire', level: 'expert', elixirRate: 1.15,
+    deck: ['mega-knight', 'golem', 'baby-dragon', 'witch', 'lightning', 'minion-horde', 'tombstone', 'zap'],
+    unlocks: ['mega-knight', 'golem'],
+    note: 'Son élixir remonte 15 % plus vite.',
+    taunts: lines('Attention à la tête.', 'Ça chatouille.', 'BOUM.', 'Je rebondirai.', 'Écrasé.'),
   },
 ];
 
 export const SKIRMISH_DECKS = [
-  ['lapin', 'moines', 'souris', 'baliste', 'feu', 'fleches', 'diablotins', 'goupil'],
-  ['escargot', 'moines', 'wyverne', 'squelettes', 'feu', 'encre', 'chouette', 'goupil'],
-  ['grylle', 'chat', 'souris', 'beffroi', 'fleches', 'lapin', 'chouette', 'encre'],
-  ['ours', 'abbesse', 'cigogne', 'cochon', 'squelettes', 'fleches', 'diablotins', 'cantique'],
-  ['gargouille', 'moines', 'wyverne', 'terrier', 'courroux', 'goupil', 'squelettes', 'feu'],
+  ['knight', 'archers', 'goblins', 'cannon', 'fireball', 'arrows', 'minions', 'giant'],
+  ['giant', 'musketeer', 'mini-pekka', 'skeletons', 'fireball', 'zap', 'minions', 'goblins'],
+  ['hog-rider', 'valkyrie', 'tesla', 'skeletons', 'arrows', 'musketeer', 'spear-goblins', 'freeze'],
+  ['pekka', 'witch', 'balloon', 'bomber', 'zap', 'arrows', 'minion-horde', 'rage'],
+  ['golem', 'baby-dragon', 'wizard', 'tombstone', 'lightning', 'goblins', 'skeletons', 'fireball'],
+  ['mega-knight', 'prince', 'goblin-barrel', 'inferno-tower', 'rocket', 'bomber', 'skeleton-army', 'zap'],
 ];
 
 export const RANKS = [
-  [0, 'Écolier'], [120, 'Clerc'], [300, 'Copiste'], [550, 'Rubricateur'], [850, 'Enlumineur'], [1200, 'Maître d’atelier'], [1700, 'Gardien du Codex'],
+  [0, 'Camp d’entraînement'], [120, 'Stade des gobelins'], [300, 'Fosse des os'], [550, 'Colisée des barbares'], [850, 'Vallée des sorts'], [1200, 'Atelier du constructeur'], [1700, 'Arène royale'], [2300, 'Arène légendaire'],
 ];
 
-export function rankFor(seals) {
+export function rankFor(trophies) {
   let name = RANKS[0][1];
-  for (const [min, label] of RANKS) if (seals >= min) name = label;
+  for (const [min, label] of RANKS) if (trophies >= min) name = label;
   return name;
 }

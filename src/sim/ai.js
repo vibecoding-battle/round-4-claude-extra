@@ -1,23 +1,23 @@
 // Adversaire : observe l'état de la simulation et joue via la même API qu'un humain (`sim.play`).
-// Seul le dernier folio bénéficie d'un bonus d'encre, annoncé au joueur.
+// Seul le dernier dresseur bénéficie d'un bonus d'élixir, annoncé au joueur.
 //
 // Les niveaux diffèrent par ce qu'un joueur apprend avec le temps :
 // - novice : réagit tard, se trompe de carte, pose une carte à la fois dès qu'il a de quoi ;
 // - apprenti : défend correctement, soutient parfois ses attaques ;
-// - maître : accumule l'encre pour pousser à plusieurs cartes, utilise ses sorts à bon escient ;
-// - grand maître : idem sans erreur, profite des moments où l'adversaire n'a plus d'encre.
+// - maître : accumule l'élixir pour pousser à plusieurs cartes, utilise ses sorts à bon escient ;
+// - grand maître : idem sans erreur, profite des moments où l'adversaire n'a plus d'élixir.
 import { unitValue, UNITS } from './cards.js';
 import { H, mulberry, RIVER_BOTTOM, RIVER_TOP, TICK, W } from './sim.js';
 
 export const LEVELS = {
-  novice: { think: 1.5, reaction: 2.6, reserve: 5, mistake: 0.32, ignore: 1.3, overkill: 3, spellGain: 2.2, pushes: false, punish: false, label: 'Novice' },
-  moyen: { think: 0.9, reaction: 1.3, reserve: 6, mistake: 0.12, ignore: 1.1, overkill: 2, spellGain: 1.2, pushes: true, punish: false, label: 'Apprenti' },
-  fort: { think: 0.5, reaction: 0.7, reserve: 7, mistake: 0.03, ignore: 0.9, overkill: 1.5, spellGain: 0.9, pushes: true, punish: false, label: 'Maître' },
-  expert: { think: 0.3, reaction: 0.3, reserve: 8, mistake: 0, ignore: 0.8, overkill: 1, spellGain: 0.75, pushes: true, punish: true, label: 'Grand Maître' },
+  novice: { think: 1.5, reaction: 2.6, reserve: 5, mistake: 0.32, ignore: 1.3, overkill: 3, spellGain: 2.2, pushes: false, punish: false, label: 'Facile' },
+  moyen: { think: 0.9, reaction: 1.3, reserve: 6, mistake: 0.12, ignore: 1.1, overkill: 2, spellGain: 1.2, pushes: true, punish: false, label: 'Intermédiaire' },
+  fort: { think: 0.5, reaction: 0.7, reserve: 7, mistake: 0.03, ignore: 0.9, overkill: 1.5, spellGain: 0.9, pushes: true, punish: false, label: 'Difficile' },
+  expert: { think: 0.3, reaction: 0.3, reserve: 8, mistake: 0, ignore: 0.8, overkill: 1, spellGain: 0.75, pushes: true, punish: true, label: 'Expert' },
 };
 
 function hitsAir(card) {
-  if (card.type === 'spell') return card.spell && (card.spell.kind !== 'zone' || card.spell.effect === 'slow');
+  if (card.type === 'spell') return card.spell && card.spell.kind !== 'drop' && card.spell.effect !== 'rage';
   return UNITS[card.unit].targets === 'any';
 }
 
@@ -92,7 +92,7 @@ export class AI {
     const me = sim.players[this.team];
     const { lanes, allies } = this.analyze(sim);
     const threat = lanes[0].value >= lanes[1].value ? lanes[0] : lanes[1];
-    // Une tour encaisse seule une menace légère : on n'y gaspille pas d'encre.
+    // Une tour encaisse seule une menace légère : on n'y gaspille pas d'élixir.
     const serious = threat.value >= this.cfg.ignore || threat.hunters > 0 || (threat.front < 9 && threat.value > 0.3);
 
     if (serious) {
@@ -107,13 +107,13 @@ export class AI {
 
     if (this.cfg.pushes && sim.time < this.supportUntil && this.support(sim, me)) return;
 
-    if (me.ink >= this.reserve(sim)) this.attack(sim, me);
+    if (me.elixir >= this.reserve(sim)) this.attack(sim, me);
   }
 
   reserve(sim) {
     const { cfg } = this;
     let r = cfg.reserve;
-    if (sim.inkMultiplier() > 1) r -= 2; // L'encre coule : on peut enchaîner.
+    if (sim.elixirMultiplier() > 1) r -= 2; // L'élixir coule : on peut enchaîner.
     if (cfg.punish && sim.players[1 - this.team].ink <= 2.5) r = Math.min(r, 5);
     return r;
   }
@@ -124,7 +124,7 @@ export class AI {
       const real = sim.resolveCard(this.team, card);
       if (!real) return;
       const cost = sim.costOf(this.team, card);
-      if (cost > me.ink) return;
+      if (cost > me.elixir) return;
       out.push({ slot, card: real, cost });
     });
     return out;
@@ -157,24 +157,24 @@ export class AI {
   scoreDefense(o, threat) {
     const { card, cost } = o;
     if (card.type === 'spell') {
-      if (card.spell.effect === 'rage' || card.spell.effect === 'summon') return 0;
+      if (card.spell.effect === 'rage' || card.spell.kind === 'drop') return 0;
       if (threat.swarm >= 3) return 1.3 - cost * 0.05;
-      if (card.spell.effect === 'slow' && threat.value > 4) return 0.5;
+      if (card.spell.effect === 'freeze' && threat.value > 4) return 0.5;
       return 0;
     }
     const u = UNITS[card.unit];
     if (u.targets === 'buildings' && !u.building) return 0.05;
-    if (u.kamikaze && threat.count < 2 && threat.tank) return 0.3;
+    if (u.producer) return 0;
+    if (u.minRange) return 0.1;
     if (threat.air === threat.count && !hitsAir(card)) return 0;
-    // Valeur neutralisée rapportée au prix : au-delà de la menace, l'encre est perdue.
+    // Valeur neutralisée rapportée au prix : au-delà de la menace, l'élixir est perdu.
     const useful = Math.min(threat.value * this.cfg.overkill + 0.5, card.count * unitValue(card.unit));
     let score = useful / (cost + 1);
     if (threat.air > 0 && hitsAir(card)) score += 0.3;
     if (threat.tank && dps(card) > 150) score += 0.5;
     if (threat.hunters && card.type === 'building') score += 0.7;
-    if (threat.swarm >= 3 && u.splash) score += 0.8;
-    if (threat.swarm >= 3 && card.count <= 1 && !u.splash) score -= 0.25;
-    if (u.heal) score -= 0.3;
+    if (threat.swarm >= 3 && (u.splash || u.spin)) score += 0.8;
+    if (threat.swarm >= 3 && card.count <= 1 && !u.splash && !u.spin) score -= 0.25;
     return score + this.rng() * 0.1;
   }
 
@@ -237,7 +237,7 @@ export class AI {
 
   spellValueOn(card, e) {
     const s = card.spell;
-    const total = s.kind === 'volley' ? s.dmg * s.volleys : s.kind === 'zone' ? (s.dps || 0) * (s.duration || 0) : s.dmg || 0;
+    const total = s.kind === 'volley' ? s.dmg * s.volleys : s.dmg || 0;
     if (!total) return 0;
     const dealt = Math.min(total, e.hp);
     const killBonus = total >= e.hp ? 1.5 : 1;
@@ -251,24 +251,31 @@ export class AI {
       const { effect, kind } = card.spell;
       if (effect === 'rage') {
         const spot = this.allyCluster(sim);
-        if (spot && spot.count >= 3 && me.ink >= cost + 1 && spot.forward) {
+        if (spot && spot.count >= 3 && me.elixir >= cost + 1 && spot.forward) {
           if (sim.play(this.team, o.slot, spot.x, spot.y)) return true;
         }
         continue;
       }
-      if (effect === 'summon') {
-        if (me.ink >= 8) {
+      if (kind === 'drop') {
+        if (me.elixir >= 7) {
           const t = this.weakestTower(sim);
           if (sim.play(this.team, o.slot, t.x, t.y + (this.team === 1 ? -3 : 3))) return true;
+        }
+        continue;
+      }
+      if (effect === 'freeze') {
+        const spot = this.allyCluster(sim);
+        if (spot && spot.count >= 3 && spot.forward && me.elixir >= cost + 2) {
+          if (sim.play(this.team, o.slot, spot.x, spot.y + (this.team === 1 ? 3 : -3))) return true;
         }
         continue;
       }
       if (kind === 'blast' || kind === 'smite' || kind === 'volley') {
         const t = this.weakestTower(sim);
         const total = card.spell.dmg * (card.spell.volleys || 1) * card.spell.towerMul;
-        // Achever une tour, ou l'user quand l'encre déborderait de toute façon.
+        // Achever une tour, ou l'user quand l'élixir déborderait de toute façon.
         const finisher = t.hp <= total;
-        const chip = this.cfg.pushes && me.ink >= 9.5 && kind === 'blast';
+        const chip = this.cfg.pushes && me.elixir >= 9.5 && kind === 'blast';
         if ((finisher || chip) && sim.play(this.team, o.slot, t.x, t.y)) return true;
       }
       const cluster = this.bestCluster(sim, card);
@@ -345,6 +352,11 @@ export class AI {
   attack(sim, me) {
     const options = this.playable(sim, me);
     if (!options.length) return false;
+    const collector = options.find((o) => o.card.type === 'building' && UNITS[o.card.unit].producer);
+    if (collector && me.elixir >= collector.cost + 2) {
+      const spot = this.findSpot(sim, collector.card, this.rng() < 0.5 ? 6 : 12, 2.5);
+      if (spot && sim.play(this.team, collector.slot, spot[0], spot[1])) return true;
+    }
     const lane = this.chooseLane(sim);
     const x = lane === 0 ? 3.5 : 14.5;
     const troops = options.filter((o) => o.card.type === 'troop');
@@ -359,17 +371,17 @@ export class AI {
       pick = troops.reduce((a, b) => (bulk(b.card) > bulk(a.card) ? b : a));
     }
     if (!pick) {
-      // Main sans troupe : un bâtiment plutôt que de stagner à l'encre pleine.
-      if (me.ink < 10) return false;
+      // Main sans troupe : un bâtiment plutôt que de stagner à l'élixir plein.
+      if (me.elixir < 10) return false;
       pick = options.find((o) => o.card.type === 'building');
       if (!pick) return false;
-      const spot = this.findSpot(sim, pick.card, lane === 0 ? 7 : 11, 9);
+      const spot = this.findSpot(sim, pick.card, lane === 0 ? 7 : 11, UNITS[pick.card.unit].range > 8 ? 11 : 9);
       return !!(spot && sim.play(this.team, pick.slot, spot[0], spot[1]));
     }
     const u = UNITS[pick.card.unit];
     // Les lents partent de plus loin : cela laisse le temps de recharger pour les soutenir.
     let depth = 13.5;
-    if (this.cfg.pushes && u.speed < 0.9) depth = me.ink >= 9 ? 6 : 10;
+    if (this.cfg.pushes && u.speed < 0.9) depth = me.elixir >= 9 ? 6 : 10;
     else if (u.range > 2) depth = 11;
     const spot = this.findSpot(sim, pick.card, x, depth);
     if (spot && sim.play(this.team, pick.slot, spot[0], spot[1])) {
