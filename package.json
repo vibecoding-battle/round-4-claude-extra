@@ -1,0 +1,14 @@
+{
+  "name": "guerre-des-marges",
+  "version": "1.0.0",
+  "description": "Duel de cartes en temps réel dans les marges d'un manuscrit enluminé.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test tests/sim.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
