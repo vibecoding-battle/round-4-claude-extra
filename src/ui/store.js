@@ -2,12 +2,12 @@
 import { CARD_BY_ID, DEFAULT_DECK } from '../sim/cards.js';
 import { CHAPTERS, STARTER_CARDS } from '../data/campaign.js';
 
-const KEY = 'guerre-des-marges.v1';
+const KEY = 'clash-royale-fan.v1';
 
 const FRESH = {
   deck: DEFAULT_DECK,
   beaten: 0,
-  seals: 0,
+  trophies: 0,
   wins: 0,
   losses: 0,
   crowns: 0,

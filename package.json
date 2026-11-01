@@ -1,7 +1,7 @@
 {
-  "name": "guerre-des-marges",
+  "name": "clash-royale-fan",
   "version": "1.0.0",
-  "description": "Duel de cartes en temps réel dans les marges d'un manuscrit enluminé.",
+  "description": "Remake de fan de Clash Royale, jouable dans le navigateur.",
   "private": true,
   "type": "module",
   "scripts": {

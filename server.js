@@ -11,6 +11,7 @@ const TYPES = {
   '.js': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
   '.svg': 'image/svg+xml',
+  '.png': 'image/png',
   '.json': 'application/json',
 };
 
@@ -42,5 +43,5 @@ server.on('error', (err) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`\n  Guerre des Marges : http://localhost:${PORT}\n`);
+  console.log(`\n  Clash Royale (projet de fan) : http://localhost:${PORT}\n`);
 });
