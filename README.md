@@ -1,73 +1,75 @@
 # Guerre des Marges
 
-Duel de cartes en temps réel dans les marges d'un manuscrit enluminé. Deux camps, trois tours chacun, une jauge d'encre, un deck de huit cartes : abats le donjon d'en face avant la fin du temps.
+**Claude**'s second entry for Round 4 of [Vibe Coding Battle](https://github.com/vibecoding-battle).
 
-Tout est original : noms, personnages (lapins chevaliers, escargots de siège, gargouilles…), dessins tracés en code et sons synthétisés. Aucun fichier image ou audio, aucun asset de Supercell.
+A real-time card duel fought in the margins of an illuminated manuscript. Two sides, three towers each, an ink gauge and a deck of eight cards: bring down the enemy keep before time runs out.
 
-## Installer et lancer
+Everything is original: the names, the characters (rabbit knights, siege snails, gargoyles and more), the drawings traced in code and the synthesized sounds. There are no image or audio files and no Supercell assets. The game's interface is in French.
 
-Il faut seulement [Node.js](https://nodejs.org) 18 ou plus récent. Aucune dépendance à installer.
+## Run it
+
+You only need [Node.js](https://nodejs.org) 18 or newer. There are no dependencies to install.
 
 ```bash
 npm start
 ```
 
-Puis ouvre <http://localhost:5173>. Si le port est pris, choisis-en un autre avec la variable `PORT` (`PORT=8080 npm start` sous macOS ou Linux, `$env:PORT=8080; npm start` sous PowerShell).
+Then open <http://localhost:5173>. If the port is taken, set `PORT` (`PORT=8080 npm start` on macOS or Linux, `$env:PORT=8080; npm start` in PowerShell).
 
-Pour lancer les tests de la simulation :
+To run the simulation tests:
 
 ```bash
 npm test
 ```
 
-Les polices viennent de Google Fonts. Hors ligne, le jeu reste jouable avec une police de repli.
+Fonts load from Google Fonts. Offline, the game falls back to another font.
 
-## Comment jouer
+## How to play
 
-- **Poser une carte** : glisse-la sur ta moitié de la page, ou touche-la puis touche la page. Au clavier : `1` à `4`, puis clic. `Échap` met en pause.
-- **Encre** : remonte seule, une goutte toutes les 2,8 s, jusqu'à 10. Double dans la dernière minute.
-- **Gagner** : une tour vaut une couronne, le donjon trois et termine la partie. À égalité après 3 minutes, une minute de mort subite, puis la tour la plus abîmée perd.
+- **Play a card:** drag it onto your half of the page, or tap it and then tap the page. On a keyboard: `1` to `4`, then click. `Esc` pauses.
+- **Ink:** refills on its own, one drop every 2.8 s, up to 10. It doubles in the last minute.
+- **Win:** a tower is worth one crown. The keep is worth three and ends the match. If it's tied after 3 minutes, one minute of sudden death follows, and after that the side with the most damaged tower loses.
 
-L'écran *Règles* du jeu détaille le reste.
+The in-game *Règles* screen covers the rest.
 
-## Ce qui est implémenté
+## What's in the game
 
-- **Combat complet** : arène avec rivière et deux ponts, 2 tours et 1 donjon par camp, roi endormi qui se réveille, poche de pose après la chute d'une tour, encre double puis triple, prolongation et départage.
-- **27 cartes** : 17 troupes, 3 bâtiments, 7 sorts. Unités au sol et volantes, chercheurs de bâtiments, charge, soin, kamikaze, invocation à la mort, générateurs, dégâts de zone, ralentissement, accélération, étourdissement, copie de la dernière carte.
-- **Adversaire** : IA à quatre niveaux qui joue avec les mêmes règles et la même API que le joueur (défense, sorts, poussées à plusieurs cartes, punition quand tu n'as plus d'encre). Seul le dernier adversaire a un bonus, annoncé : son encre remonte 15 % plus vite.
-- **Campagne** de 8 adversaires avec deck, personnalité et répliques propres, qui débloque des cartes. Escarmouche libre à tout niveau.
-- **Grimoire** : composition du deck, fiche et statistiques de chaque carte.
-- **Progression** enregistrée dans le navigateur : sceaux, rangs, victoires.
-- **Son** : effets et musique modale générés en direct, coupables à tout moment.
-- **Bureau et mobile** : souris, tactile et clavier. Premier combat guidé.
+- **Full combat:** an arena with a river and two bridges, 2 towers and 1 keep per side, a sleeping king who wakes up, a wider deployment zone once a tower falls, double then triple ink, overtime and a tiebreak.
+- **27 cards:** 17 troops, 3 buildings and 7 spells. Ground and flying units, building hunters, charge, healing, kamikazes, death spawns, spawners, area damage, slow, haste, stun and a card that copies your last play.
+- **Opponent:** a four-level AI that plays by the same rules and through the same API as you (defense, spells, multi-card pushes, punishing you when you run out of ink). Only the final opponent has a bonus, and the game tells you: its ink refills 15% faster.
+- **Campaign:** 8 opponents with their own decks, personalities and lines, unlocking cards as you go. Free skirmishes at any level.
+- **Deck builder:** build your deck and read each card's stats.
+- **Progression** saved in the browser: seals, ranks and wins.
+- **Sound:** effects and modal music generated live, with a mute option.
+- **Desktop and mobile:** mouse, touch and keyboard. The first match is guided.
 
-## Choix techniques
+## Technical choices
 
-- **JavaScript sans framework ni étape de build**, modules ES natifs : rien à installer, le code livré est le code exécuté.
-- **Simulation déterministe séparée du rendu** (`src/sim/`) : pas fixe de 30 Hz, générateur pseudo-aléatoire à graine, aucun accès au DOM. Elle tourne à l'identique sous Node, ce qui permet de tester de vraies parties et de mesurer l'équilibrage sans navigateur.
-- **Canvas 2D** pour l'arène : figures en chemins SVG mises en cache par calques, interpolées à l'affichage. Environ 2 ms de dessin par image avec près de 90 entités (mesure unique, Chrome sans fenêtre sur un PC de bureau).
-- **DOM** pour les menus et le HUD, plus accessibles et plus nets que du texte sur canvas.
-- **Web Audio** pour tout le son.
+- **JavaScript with no framework and no build step**, using native ES modules: nothing to install, and the code you read is the code that runs.
+- **Deterministic simulation kept apart from rendering** (`src/sim/`): a fixed 30 Hz step, a seeded random generator and no DOM access. It runs the same way under Node, so real matches can be tested and balance measured without a browser.
+- **Canvas 2D** for the arena: figures drawn as SVG paths, cached as layers and interpolated on screen. Drawing took about 2 ms per frame with nearly 90 entities (a single measurement, in headless Chrome on a desktop PC).
+- **DOM** for menus and the HUD, which are more accessible and sharper than canvas text.
+- **Web Audio** for all sound.
 
 ```
-server.js          serveur statique sans dépendance
-src/sim/           règles, cartes, IA (sans DOM)
-src/render/        figures, mise en cache, rendu de la bataille
-src/audio/         effets et musique synthétisés
-src/ui/            boucle de combat, saisie, HUD, profil
-src/data/          campagne et rangs
-src/main.js        écrans
-tests/             19 tests, dont des parties complètes IA contre IA
+server.js          dependency-free static server
+src/sim/           rules, cards, AI (no DOM)
+src/render/        figures, caching, battle rendering
+src/audio/         synthesized effects and music
+src/ui/            battle loop, input, HUD, profile
+src/data/          campaign and ranks
+src/main.js        screens
+tests/             19 tests, including full AI vs AI matches
 ```
 
-## Vérifications
+## Testing
 
-- `npm test` : 19 tests passent (règles de pose, déplacements, sorts, prolongation, reproductibilité, parties complètes sur des decks variés, et le niveau expert qui bat le novice).
-- Parcouru dans Chrome de bout en bout : souris, clavier, tactile émulé, pause, partie jusqu'au résultat (l'IA jouant à ma place, en accéléré), déblocages, en 1280×720, 1440×900 et 390×844, sans erreur console.
-- Non vérifié : Safari et Firefox, un vrai téléphone, une partie entière jouée par un humain, et l'écoute du son (les effets s'exécutent sans erreur, mais personne ne les a entendus).
+- `npm test`: all 19 tests pass (placement rules, movement, spells, overtime, reproducibility, full matches with varied decks, and the expert level beating the novice).
+- Run end to end in Chrome: mouse, keyboard, emulated touch, pause, a match through to the results screen (with the AI playing my side, sped up) and unlocks, at 1280x720, 1440x900 and 390x844, with no console errors.
+- Not tested: Safari and Firefox, a real phone, a full match played by a human, and listening to the sound (the effects run without errors, but nobody has heard them yet).
 
-## Limites connues
+## Known limits
 
-- L'équilibrage a été mesuré sur des parties IA contre IA, pas contre des humains. Entre IA de même niveau, la plupart des parties vont en prolongation avec peu de couronnes, surtout avec le deck de départ, qui n'a pas de carte de siège.
-- Maître et Grand Maître sont de force proche quand ils s'affrontent directement.
-- Pas de multijoueur en réseau.
+- Balance was measured on AI vs AI matches, not against humans. Between AIs of the same level, most matches go to overtime with few crowns, especially with the starter deck, which has no siege card.
+- Maître and Grand Maître are close in strength when they face each other directly.
+- No online multiplayer.
